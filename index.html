@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Personal Color Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .button {
+            display: inline-block;
+            width: 200px;
+            margin: 1rem;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #resetButton {
+            background-color: #e74c3c;
+        }
+        #imagePreview {
+            max-width: 100%;
+            margin-top: 1rem;
+        }
+        #analysisResult {
+            margin-top: 2rem;
+        }
+        .color-swatch {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AI Personal Color Analysis</h1>
+    </header>
+
+    <main>
+        <section class="intro">
+            <p>Discover your perfect colors! This app helps you choose the ideal color palette for your wardrobe, accessories, and makeup based on your natural features.</p>
+        </section>
+
+    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+    <button class="button" onclick="document.getElementById('imageUpload').click()">Upload Your Photo</button>
+    <button id="resetButton" class="button" onclick="resetAnalysis()" style="display: none;">Reset</button>
+
+    <img id="imagePreview" style="display: none;">
+    <div id="analysisResult"></div>
+
+    <script>
+        document.getElementById('imageUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('imagePreview');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    img.onload = () => analyzeImage(img);
+                    document.getElementById('resetButton').style.display = 'inline-block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function analyzeImage(img) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            let r = 0, g = 0, b = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+                r += data[i];
+                g += data[i + 1];
+                b += data[i + 2];
+            }
+
+            const pixelCount = data.length / 4;
+            r = Math.floor(r / pixelCount);
+            g = Math.floor(g / pixelCount);
+            b = Math.floor(b / pixelCount);
+
+            const season = determineSeason(r, g, b);
+            displayResult(season, r, g, b);
+        }
+
+        function determineSeason(r, g, b) {
+            const hue = getHue(r, g, b);
+            const saturation = getSaturation(r, g, b);
+            const brightness = getBrightness(r, g, b);
+
+            if (hue < 60 || hue >= 300) {
+                return brightness > 128 ? 'Warm Spring' : 'Deep Autumn';
+            } else if (hue < 180) {
+                return saturation > 128 ? 'Cool Winter' : 'Soft Summer';
+            } else {
+                return brightness > 128 ? 'Light Summer' : 'Cool Winter';
+            }
+        }
+
+        function getHue(r, g, b) {
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let hue;
+
+            if (max === min) {
+                hue = 0;
+            } else if (max === r) {
+                hue = (60 * ((g - b) / (max - min)) + 360) % 360;
+            } else if (max === g) {
+                hue = 60 * ((b - r) / (max - min)) + 120;
+            } else {
+                hue = 60 * ((r - g) / (max - min)) + 240;
+            }
+
+            return Math.round(hue);
+        }
+
+        function getSaturation(r, g, b) {
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            return max === 0 ? 0 : Math.round(100 * (1 - min / max));
+        }
+
+        function getBrightness(r, g, b) {
+            return Math.round((r * 299 + g * 587 + b * 114) / 1000);
+        }
+
+        function displayResult(season, r, g, b) {
+            const resultDiv = document.getElementById('analysisResult');
+            resultDiv.innerHTML = `
+                <h2>Your Color Season: ${season}</h2>
+                <p>Average color detected: <span class="color-swatch" style="background-color: rgb(${r},${g},${b});"></span></p>
+                <p>Recommended colors for your palette:</p>
+                <div>${generateColorSwatches(season)}</div>
+            `;
+        }
+
+        function generateColorSwatches(season) {
+            const colorPalettes = {
+                'Warm Spring': ['#E6B65C', '#E67373', '#73ADE6', '#73E6AD', '#ADE673', '#E6AD73'],
+                'Soft Summer': ['#B5C7D3', '#D3B5C7', '#C7D3B5', '#B5D3C7', '#C7B5D3', '#D3C7B5'],
+                'Cool Winter': ['#5C8AE6', '#E65C8A', '#8AE65C', '#5CE68A', '#E68A5C', '#8A5CE6'],
+                'Deep Autumn': ['#8B4513', '#CD853F', '#D2691E', '#B8860B', '#A0522D', '#DEB887'],
+                'Light Summer': ['#FFB6C1', '#87CEFA', '#98FB98', '#DDA0DD', '#F0E68C', '#E6E6FA']
+            };
+            const colors = colorPalettes[season];
+            return colors.map(color => `<span class="color-swatch" style="background-color: ${color};"></span>`).join('');
+        }
+
+        function resetAnalysis() {
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('analysisResult').innerHTML = '';
+            document.getElementById('resetButton').style.display = 'none';
+            document.getElementById('imageUpload').value = '';
+        }
+    </script>
+</body>
+</html>
